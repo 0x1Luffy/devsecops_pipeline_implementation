@@ -80,7 +80,7 @@ jobs:
     needs: [build]
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAME: ghcr.io/${{ github.repository }}/my-image:latest
+      IMAGE_NAME: ${{ github.repository }}/my-image
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
       - name: Run Trivy vulnerability Scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          image-ref: ${{ steps.meta.outputs.tags }}
           format: "table"
           exit-code: "1"
           ignore-unfixed: true
