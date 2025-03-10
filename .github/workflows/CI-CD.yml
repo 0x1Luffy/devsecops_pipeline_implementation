@@ -84,7 +84,7 @@ jobs:
 
       - name: Set Lowercase Repository Name
         run: |
-          echo "LOWERCASE_REPO=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "LOWERCASE_REPO=$(echo '${{ github.repository }}' | awk -F'/' '{print $2}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Download Build Artifacts
         uses: actions/download-artifact@v4
@@ -106,7 +106,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ env.LOWERCASE_REPO }}/my-image
+          images: ghcr.io/${{ github.actor }}/${{ env.LOWERCASE_REPO }}
           tags: |
             type=sha,format=long
             type=ref,event=branch
@@ -117,14 +117,14 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ env.LOWERCASE_REPO }}/my-image:${{ github.sha }}
+          tags: ghcr.io/${{ github.actor }}/${{ env.LOWERCASE_REPO }}:sha-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Run Trivy Vulnerability Scanner
         uses: aquasecurity/trivy-action@master
         continue-on-error: true
         with:
-          image-ref: "ghcr.io/${{ env.LOWERCASE_REPO }}/my-image:${{ github.sha }}"
+          image-ref: "ghcr.io/${{ github.actor }}/${{ env.LOWERCASE_REPO }}:sha-${{ github.sha }}"
           format: "table"
           exit-code: "0"
           ignore-unfixed: true
@@ -153,7 +153,7 @@ jobs:
           REGISTRY: ghcr.io
           LOWERCASE_REPO: ${{ env.LOWERCASE_REPO }}
         run: |
-          NEW_IMAGE="${REGISTRY}/${LOWERCASE_REPO}/my-image:${IMAGE_TAG}"
+          NEW_IMAGE="${REGISTRY}/${{ github.actor }}/${LOWERCASE_REPO}:${IMAGE_TAG}"
           sed -i "s|image: ${REGISTRY}/.*|image: ${NEW_IMAGE}|g" K8s/deployment.yml
           echo "Updated deployment to use image: ${NEW_IMAGE}"
           grep -A 1 "image:" K8s/deployment.yml
