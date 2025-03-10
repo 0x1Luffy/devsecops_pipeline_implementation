@@ -155,12 +155,12 @@ jobs:
           LOWERCASE_REPO: ${{ env.LOWERCASE_REPO }}
         run: |
           NEW_IMAGE="${REGISTRY}/${LOWERCASE_USER}/${LOWERCASE_REPO}/my-image:${IMAGE_TAG}"
-          sed -i "s|image: ${REGISTRY}/.*|image: ${NEW_IMAGE}|g" K8s/deployment.yaml
+          sed -i "s|image: ${REGISTRY}/.*|image: ${NEW_IMAGE}|g" K8s/deployment.yml
           echo "Updated deployment to use image: ${NEW_IMAGE}"
-          grep -A 1 "image:" K8s/deployment.yaml
+          grep -A 1 "image:" K8s/deployment.yml
 
       - name: Commit and push changes
         run: |
-          git add K8s/deployment.yaml
+          git add K8s/deployment.yml
           git commit -m "Update Kubernetes deployment with new image tag: ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
           git push
