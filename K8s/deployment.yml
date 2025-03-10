@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tick-game
+  labels:
+    app: tick-game
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tick-game
+  template:
+    metadata:
+      labels:
+        app: tick-game
+    spec:
+      containers:
+        - name: tick-game
+          image: ghcr.io/0x1Luffy/DevSecOps_Pipeline_Implementation
+          # Dynamic image upload by github registory
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: "0.5"
+              memory: "512Mi"
+            requests:
+              cpu: "0.2"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      imagePullSecrets:
+        - name: github-container-registry
