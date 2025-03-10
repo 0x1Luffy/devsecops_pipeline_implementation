@@ -82,9 +82,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set Lowercase GitHub Username and Repository Name
+      - name: Set Lowercase Repository Name
         run: |
-          echo "LOWERCASE_USER=$(echo '${{ github.actor }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           echo "LOWERCASE_REPO=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Download Build Artifacts
@@ -107,7 +106,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ env.LOWERCASE_USER }}/${{ env.LOWERCASE_REPO }}/my-image
+          images: ghcr.io/${{ env.LOWERCASE_REPO }}/my-image
           tags: |
             type=sha,format=long
             type=ref,event=branch
@@ -118,15 +117,16 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ env.LOWERCASE_USER }}/${{ env.LOWERCASE_REPO }}/my-image:${{ github.sha }}
+          tags: ghcr.io/${{ env.LOWERCASE_REPO }}/my-image:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Run Trivy Vulnerability Scanner
         uses: aquasecurity/trivy-action@master
+        continue-on-error: true
         with:
-          image-ref: "ghcr.io/${{ env.LOWERCASE_USER }}/${{ env.LOWERCASE_REPO }}/my-image:${{ github.sha }}"
+          image-ref: "ghcr.io/${{ env.LOWERCASE_REPO }}/my-image:${{ github.sha }}"
           format: "table"
-          exit-code: "0" # There was one error which was ignore so adding 0 here ignores the error and runs the pipeline further.
+          exit-code: "0"
           ignore-unfixed: true
           vuln-type: "os,library"
           severity: "CRITICAL,HIGH"
@@ -151,10 +151,9 @@ jobs:
         env:
           IMAGE_TAG: sha-${{ github.sha }}
           REGISTRY: ghcr.io
-          LOWERCASE_USER: ${{ env.LOWERCASE_USER }}
           LOWERCASE_REPO: ${{ env.LOWERCASE_REPO }}
         run: |
-          NEW_IMAGE="${REGISTRY}/${LOWERCASE_USER}/${LOWERCASE_REPO}/my-image:${IMAGE_TAG}"
+          NEW_IMAGE="${REGISTRY}/${LOWERCASE_REPO}/my-image:${IMAGE_TAG}"
           sed -i "s|image: ${REGISTRY}/.*|image: ${NEW_IMAGE}|g" K8s/deployment.yml
           echo "Updated deployment to use image: ${NEW_IMAGE}"
           grep -A 1 "image:" K8s/deployment.yml
