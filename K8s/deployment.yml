@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: tick-game
-          image: ghcr.io/0x1luffy/devsecops_pipeline_implementation/my-image:sha-7646779ef7200af4cae89c9626a9610eb6dc2b44
+          image: ghcr.io///my-image:sha-51960646188b150793e0f4ea2564885fe9b29df8
           # Dynamic image upload by github registory
           imagePullPolicy: Always
           ports:
