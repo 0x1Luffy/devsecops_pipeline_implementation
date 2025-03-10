@@ -78,15 +78,14 @@ jobs:
     name: Docker Build and Push
     runs-on: ubuntu-latest
     needs: [build]
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}/my-image
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set Lowercase Repository Name
-        run: echo "REPO_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+      - name: Set Lowercase GitHub Username and Repository Name
+        run: |
+          echo "LOWERCASE_USER=$(echo '${{ github.actor }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "LOWERCASE_REPO=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Download Build Artifacts
         uses: actions/download-artifact@v4
@@ -97,53 +96,40 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Github Container Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.TOKEN }} # Use a PAT instead of GITHUB_TOKEN
+          password: ${{ secrets.TOKEN }}
 
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ghcr.io/${{ env.LOWERCASE_USER }}/${{ env.LOWERCASE_REPO }}/my-image
           tags: |
             type=sha,format=long
             type=ref,event=branch
             latest
 
-      - name: Build Docker image
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: false
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          push: true
+          tags: ghcr.io/${{ env.LOWERCASE_USER }}/${{ env.LOWERCASE_REPO }}/my-image:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
-          load: true
 
-      - name: Run Trivy vulnerability Scanner
+      - name: Run Trivy Vulnerability Scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          image-ref: "ghcr.io/${{ env.LOWERCASE_USER }}/${{ env.LOWERCASE_REPO }}/my-image:${{ github.sha }}"
           format: "table"
           exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           severity: "CRITICAL,HIGH"
-
-      - name: Push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-      - name: Set Image tag output
-        id: set_output
-        run: echo "image_tag=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
   update-k8s:
     name: Update Kubernetes Deployment
@@ -164,16 +150,12 @@ jobs:
       - name: Update Kubernetes deployment file
         env:
           IMAGE_TAG: sha-${{ github.sha }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           REGISTRY: ghcr.io
+          LOWERCASE_USER: ${{ env.LOWERCASE_USER }}
+          LOWERCASE_REPO: ${{ env.LOWERCASE_REPO }}
         run: |
-          # Define the new image with tag
-          NEW_IMAGE="${REGISTRY}/${GITHUB_REPOSITORY}:${IMAGE_TAG}"
-
-          # Update the deployment file directly
+          NEW_IMAGE="${REGISTRY}/${LOWERCASE_USER}/${LOWERCASE_REPO}/my-image:${IMAGE_TAG}"
           sed -i "s|image: ${REGISTRY}/.*|image: ${NEW_IMAGE}|g" K8s/deployment.yaml
-
-          # Verify the change
           echo "Updated deployment to use image: ${NEW_IMAGE}"
           grep -A 1 "image:" K8s/deployment.yaml
 
